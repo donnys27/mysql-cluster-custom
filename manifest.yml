@@ -1,0 +1,84 @@
+type: install
+jpsVersion: 1.0.0
+name: whmcs db
+
+globals:
+  dbuser: test12345
+  dbpassword: test12345
+
+nodes:
+  - nodeType: docker
+    nodeGroup: sqldb
+    image: jelastic/mariadb:10.2.6
+    count: 2
+    cloudlets: 16
+    fixedCloudlets: 3
+    restartDelay: 30
+    isRedeploySupport: true
+    cluster:
+      jps: https://raw.githubusercontent.com/jelastic-jps/mysql-cluster/v2.5.0/addons/auto-clustering/auto-cluster.jps
+      settings:
+        scheme: master
+        is_proxysql: true
+    env:
+      DB_USER: "${globals.dbuser}"
+      DB_PASS: "${globals.dbpassword}"
+      ON_ENV_INSTALL: https://raw.githubusercontent.com/jelastic-jps/mysql-cluster/v2.5.0/addons/auto-clustering/auto-cluster.jps
+      SCHEME: master
+      IS_PROXYSQL: true
+    
+
+------
+type: install
+jpsVersion: 1.0.0
+name: whmcs db
+
+nodes:
+  - nodeType: docker
+    nodeGroup: sqldb
+    image: jelastic/mariadb:10.2.6
+    count: 2
+    cloudlets: 16
+    fixedCloudlets: 3
+    restartDelay: 30
+    skipnodeEmails: false
+    isRedeploySupport: true
+    cluster:
+      jps: https://raw.githubusercontent.com/jelastic-jps/mysql-cluster/v2.5.0/addons/auto-clustering/auto-cluster.jps
+      settings:
+        scheme: master
+    env:
+      DB_USER: test12345
+      DB_PASS: test12345
+      ON_ENV_INSTALL: https://raw.githubusercontent.com/jelastic-jps/mysql-cluster/v2.5.0/addons/auto-clustering/auto-cluster.jps
+      SCHEME: master
+    
+  - nodeType: proxysql
+    nodeGroup: proxy
+    count: 2
+    cloudlets: 16
+    fixedCloudlets: 3
+
+onInstall:
+  install:
+    type: update
+    name: multi master
+    skipNodeEmails: false
+
+    globals:
+      dbuser: root
+      dbpassword: wQrSbd4yGecJbStM
+      replicauser: repl-53252
+      replicapassword: z62WnKjaGY9WHJA
+      orchestratoruser: admin
+      orchestratorpassword: 57uHSy4mt9d8
+
+    onInstall:
+      - setupMultiCluster
+    actions:
+      setupMultiCluster:
+        - cmd [sqldb]:
+            - /etc/init.d/mysql stop
+            - mysqld_safe --skip-grant-tables --skip-networking
+        
+
