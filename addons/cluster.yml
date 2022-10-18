@@ -5,10 +5,6 @@ baseUrl: https://raw.githubusercontent.com/donnys27/mysql-cluster-custom/master
 skipNodeEmails: false
 
 globals:
-  DB_USER: root
-  DB_PASSWORD: wQrSbd4yGecJbStM
-  REPLICA_USER: repl-53252
-  REPLICA_PASSWORD: z62WnKjaGY9WHJA
   ORCHESTRATOR_USER: admin
   ORCHESTRATOR_PASSWORD: 57uHSy4mt9d8
 
@@ -17,8 +13,8 @@ onInstall:
 actions:
   setupMultiCluster:
     - setGlobals:
-        DB_USER: "${globals.DB_USER}"
-        DB_PASS: "${globals.DB_PASSWORD}"
+        DB_USER: "${settings.DB_USER}"
+        DB_PASS: "${settings.DB_PASSWORD}"
     # - cmd [sqldb]: |-
     #     /etc/init.d/mysql stop
     #     /usr/bin/mysqld_safe --skip-grant-tables --skip-networking &
