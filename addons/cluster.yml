@@ -19,4 +19,5 @@ actions:
     - cmd [sqldb]: |-
         /etc/init.d/mysql stop
         /usr/bin/mysqld_safe --skip-grant-tables --skip-networking &
+        kill -9 $(ps -C mysqld_safe -o pid=)
       user: root
