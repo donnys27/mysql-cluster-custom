@@ -1,6 +1,7 @@
 type: install
-jpsVersion: 1.0.0
+jpsVersion: '1.0.0'
 name: whmcs db
+id: mysql-cluster-custom
 
 nodes:
   - nodeType: docker
