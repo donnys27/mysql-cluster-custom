@@ -19,6 +19,4 @@ actions:
     - cmd [sqldb]: |-
         /etc/init.d/mysql stop
         /usr/bin/mysqld_safe --skip-grant-tables --skip-networking &
-        echo "UPDATE mysql.user SET password = PASSWORD ('${globals.DBPASSWORD}') WHERE User = '${globals.DBUSER}';" | mysql -uroot -p
-        /etc/init.d/mysql restart
       user: root
