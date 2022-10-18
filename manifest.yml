@@ -24,8 +24,6 @@ nodes:
       settings:
         scheme: master
     env:
-      DB_USER: test12345
-      DB_PASS: test12345
       ON_ENV_INSTALL: https://raw.githubusercontent.com/jelastic-jps/mysql-cluster/v2.5.0/addons/auto-clustering/auto-cluster.jps
       SCHEME: master
     
