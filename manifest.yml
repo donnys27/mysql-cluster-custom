@@ -3,6 +3,12 @@ jpsVersion: '1.0.0'
 name: whmcs db
 id: mysql-cluster-custom
 
+description:
+  text: "mysql cluster"
+  short: "mysql cluster"
+
+baseUrl: https://raw.githubusercontent.com/donnys27/mysql-cluster-custom/master
+
 nodes:
   - nodeType: docker
     nodeGroup: sqldb
