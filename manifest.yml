@@ -37,24 +37,6 @@ nodes:
 
 onInstall:
   install:
-    type: update
-    name: multi master
-    skipNodeEmails: false
-
-    globals:
-      dbuser: root
-      dbpassword: wQrSbd4yGecJbStM
-      replicauser: repl-53252
-      replicapassword: z62WnKjaGY9WHJA
-      orchestratoruser: admin
-      orchestratorpassword: 57uHSy4mt9d8
-
-    onInstall:
-      - setupMultiCluster
-    actions:
-      setupMultiCluster:
-        - cmd [sqldb]:
-            - /etc/init.d/mysql stop
-            - mysqld_safe --skip-grant-tables --skip-networking
+    jps: https://raw.githubusercontent.com/donnys27/mysql-cluster-custom/master/addons/cluster.yml
         
 

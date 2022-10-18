@@ -1,0 +1,20 @@
+type: update
+name: multi master
+baseUrl: https://raw.githubusercontent.com/donnys27/mysql-cluster-custom/master
+
+skipNodeEmails: false
+
+globals:
+  dbuser: root
+  dbpassword: wQrSbd4yGecJbStM
+  replicauser: repl-53252
+  replicapassword: z62WnKjaGY9WHJA
+  orchestratoruser: admin
+  orchestratorpassword: 57uHSy4mt9d8
+
+onInstall:
+  - setupMultiCluster
+actions:
+  setupMultiCluster:
+    - cmd [sqldb]:
+        - /etc/init.d/mysql stop
