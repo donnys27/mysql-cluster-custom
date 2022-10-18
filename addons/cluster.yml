@@ -5,19 +5,20 @@ baseUrl: https://raw.githubusercontent.com/donnys27/mysql-cluster-custom/master
 skipNodeEmails: false
 
 globals:
-  dbuser: root
-  dbpassword: wQrSbd4yGecJbStM
-  replicauser: repl-53252
-  replicapassword: z62WnKjaGY9WHJA
-  orchestratoruser: admin
-  orchestratorpassword: 57uHSy4mt9d8
+  DBUSER: root
+  DBPASSWORD: wQrSbd4yGecJbStM
+  REPLICAUSER: repl-53252
+  REPLICAPASSWORD: z62WnKjaGY9WHJA
+  ORCHESTRATORUSER: admin
+  ORCHESTRATORPASSWORD: 57uHSy4mt9d8
 
 onInstall:
   - setupMultiCluster
 actions:
   setupMultiCluster:
-    - cmd [sqldb]:
-        - /etc/init.d/mysql stop
-        - wget ${baseUrl}/scripts/resetmysql.sh -O ~/resetmysql.sh &>> /var/log/run.log
-        - bash ~/resetmysql.sh &>> /var/log/run.log
+    - cmd [sqldb]: |-
+        /etc/init.d/mysql stop
+        /usr/bin/mysqld_safe --skip-grant-tables --skip-networking &
+        echo "UPDATE mysql.user SET password = PASSWORD ('${globals.DBPASSWORD}') WHERE User = '${globals.DBUSER}';" | mysql -uroot -p
+        /etc/init.d/mysql restart
       user: root
