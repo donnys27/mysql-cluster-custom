@@ -16,7 +16,7 @@ actions:
         /etc/init.d/mysql stop
         /usr/bin/mysqld_safe --skip-grant-tables --skip-networking &
         echo "UPDATE mysql.user SET password = PASSWORD('wQrSbd4yGecJbStM') WHERE User = 'root';" | mysql -uroot -p
-        /etc/init.d/mysql restart
+        /etc/init.d/mysql stop && /etc/init.d/mysql start
     #   user: root
     # - cmd [sqldb]: |-
     #     kill -9 $(ps -C mysqld_safe -o pid=)
