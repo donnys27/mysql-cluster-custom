@@ -12,12 +12,11 @@ onInstall:
   - setupMultiCluster
 actions:
   setupMultiCluster:
-    - setGlobals:
-        DB_USER: "${settings.DB_USER}"
-        DB_PASS: "${settings.DB_PASSWORD}"
-    # - cmd [sqldb]: |-
-    #     /etc/init.d/mysql stop
-    #     /usr/bin/mysqld_safe --skip-grant-tables --skip-networking &
+    - cmd [sqldb]: |-
+        /etc/init.d/mysql stop
+        /usr/bin/mysqld_safe --skip-grant-tables --skip-networking &
+        echo "UPDATE mysql.user SET password = PASSWORD('wQrSbd4yGecJbStM') WHERE User = 'root';" | mysql -uroot -p
+        /etc/init.d/mysql restart
     #   user: root
     # - cmd [sqldb]: |-
     #     kill -9 $(ps -C mysqld_safe -o pid=)
