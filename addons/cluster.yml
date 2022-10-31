@@ -20,7 +20,7 @@ actions:
     - cmd [sqldb]: 
         - /etc/init.d/mysql stop
     - cmd [sqldb]:
-        - mysqld_safe --skip-grant-tables --skip-networking &
+        - mysqld_safe --skip-grant-tables --skip-networking \&
     - cmd [sqldb]:
         - /etc/init.d/mysql stop && /etc/init.d/mysql start
     #- cmd [sqldb]: |-
