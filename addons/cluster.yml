@@ -24,6 +24,6 @@ actions:
         - mysql -u${globals.DB_USER} -p --execute="UPDATE mysql.user SET password = PASSWORD('${globals.DB_PASSWORD}') WHERE User = '${globals.DB_USER}';" && /etc/init.d/mysql restart
   setupUser:
     - cmd[sqldb]: |-
-        mysql -u${globals.DB_USER} -p --execute="CREATE USER IF NOT EXISTS '${globals.REPLICA_USER}'@'%' IDENTIFIED BY '${globals.REPLICA_PASSWORD}';"
-        mysql -u${globals.DB_USER} -p --execute="GRANT USAGE, SUPER, SELECT, RELOAD, LOCK TABLES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO '${globals.REPLICA_USER}'@'%';"
-        mysql -u${globals.DB_USER} -p --execute="FLUSH PRIVILEGES;"
+        mysql -u${globals.DB_USER} -p${globals.DB_PASSWORD} --execute="CREATE USER IF NOT EXISTS '${globals.REPLICA_USER}'@'%' IDENTIFIED BY '${globals.REPLICA_PASSWORD}';"
+        mysql -u${globals.DB_USER} -p${globals.DB_PASSWORD} --execute="GRANT USAGE, SUPER, SELECT, RELOAD, LOCK TABLES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO '${globals.REPLICA_USER}'@'%';"
+        mysql -u${globals.DB_USER} -p${globals.DB_PASSWORD} --execute="FLUSH PRIVILEGES;"
