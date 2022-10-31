@@ -5,8 +5,12 @@ baseUrl: https://raw.githubusercontent.com/donnys27/mysql-cluster-custom/master
 skipNodeEmails: false
 
 globals:
+  DB_USER: root
+  DB_PASS: wQrSbd4yGecJbStM
   ORCHESTRATOR_USER: admin
   ORCHESTRATOR_PASSWORD: 57uHSy4mt9d8
+  REPLICA_USER: repl-53252
+  REPLICA_PASSWORD: z62WnKjaGY9WHJA
 
 onInstall:
   - setupMultiCluster
@@ -17,7 +21,9 @@ actions:
         /usr/bin/mysqld_safe --skip-grant-tables --skip-networking &
         echo "UPDATE mysql.user SET password = PASSWORD('wQrSbd4yGecJbStM') WHERE User = 'root';" | mysql -uroot -p
         /etc/init.d/mysql stop && /etc/init.d/mysql start
-    #   user: root
-    # - cmd [sqldb]: |-
-    #     kill -9 $(ps -C mysqld_safe -o pid=)
-    #   user: root
+  setupUser:
+    - cmd[sqldb]: |-
+        mysqladmin ping -u${globals.DB_USER} -p${globals.DB_PASS} 2>/dev/null 1>/dev/null; MYSQLD_RUNNING=${?};
+        if [[ ${MYSQLD_RUNNING} -eq 0 ]] ; then MYSQL_PWD=${globals.DB_PASS} mysql -u${globals.DB_USER} -e "CREATE USER IF NOT EXISTS '${globals.REPLICA_USER}'@'%' IDENTIFIED BY '${globals.REPLICA_PASSWORD}';"; fi;
+        if [[ ${MYSQLD_RUNNING} -eq 0 ]] ; then MYSQL_PWD=${globals.DB_PASS} mysql -u${globals.DB_USER} -e "GRANT USAGE, SUPER, SELECT, RELOAD, LOCK TABLES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO '${globals.REPLICA_USER}'@'%';"; fi;
+        if [[ ${MYSQLD_RUNNING} -eq 0 ]] ; then MYSQL_PWD=${globals.DB_PASS} mysql -u${globals.DB_USER} -e "FLUSH PRIVILEGES;"; fi;
