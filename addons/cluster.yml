@@ -22,6 +22,7 @@ actions:
         - bash ~/resetmysql.sh
     - cmd [sqldb]:
         - mysql -u${globals.DB_USER} -p --execute="UPDATE mysql.user SET password = PASSWORD('${globals.DB_PASSWORD}') WHERE User = '${globals.DB_USER}';"
+        - /etc/init.d/mysql restart
     #- cmd [sqldb]: |-
     #    mysql -u${globals.DB_USER} -p --execute="UPDATE mysql.user SET password = PASSWORD('${globals.DB_PASSWORD}') WHERE User = '${globals.DB_USER}';"
     #    /etc/init.d/mysql restart
