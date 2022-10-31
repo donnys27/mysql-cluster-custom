@@ -19,7 +19,6 @@ actions:
   setupMultiCluster:
     - cmd [sqldb]: 
         - /etc/init.d/mysql stop
-        - /usr/bin/mysqld_safe --skip-grant-tables --skip-networking
     - cmd [sqldb]:
         - /etc/init.d/mysql restart
     #- cmd [sqldb]: |-
