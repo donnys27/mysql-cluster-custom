@@ -14,13 +14,13 @@ globals:
 
 onInstall:
   - setupMultiCluster
-  - setupUser
+  #- setupUser
 actions:
   setupMultiCluster:
     - cmd [sqldb]: |-
         /etc/init.d/mysql stop
         /usr/bin/mysqld_safe --skip-grant-tables --skip-networking &
-        disown -h %1
+    - cmd [sqldb]: |-
         mysql -u${globals.DB_USER} -p --execute="UPDATE mysql.user SET password = PASSWORD('${globals.DB_PASSWORD}') WHERE User = '${globals.DB_USER}';"
         /etc/init.d/mysql restart
   setupUser:
