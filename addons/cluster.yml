@@ -6,7 +6,7 @@ skipNodeEmails: false
 
 globals:
   DB_USER: root
-  DB_PASS: wQrSbd4yGecJbStM
+  DB_PASSWORD: wQrSbd4yGecJbStM
   ORCHESTRATOR_USER: admin
   ORCHESTRATOR_PASSWORD: 57uHSy4mt9d8
   REPLICA_USER: repl-53252
@@ -23,6 +23,6 @@ actions:
         /etc/init.d/mysql stop && /etc/init.d/mysql start
   setupUser:
     - cmd[sqldb]: |-
-        if [[ ${MYSQLD_RUNNING} -eq 0 ]] ; then MYSQL_PWD=${globals.DB_PASS} mysql -u${globals.DB_USER} -e "CREATE USER IF NOT EXISTS '${globals.REPLICA_USER}'@'%' IDENTIFIED BY '${globals.REPLICA_PASSWORD}';"; fi;
-        if [[ ${MYSQLD_RUNNING} -eq 0 ]] ; then MYSQL_PWD=${globals.DB_PASS} mysql -u${globals.DB_USER} -e "GRANT USAGE, SUPER, SELECT, RELOAD, LOCK TABLES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO '${globals.REPLICA_USER}'@'%';"; fi;
-        if [[ ${MYSQLD_RUNNING} -eq 0 ]] ; then MYSQL_PWD=${globals.DB_PASS} mysql -u${globals.DB_USER} -e "FLUSH PRIVILEGES;"; fi;
+        mysql -uroot -p${DB_PASSWORD} --execute="CREATE USER IF NOT EXISTS '${globals.REPLICA_USER}'@'%' IDENTIFIED BY '${globals.REPLICA_PASSWORD}';"
+        mysql -uroot -p${DB_PASSWORD} --execute="GRANT USAGE, SUPER, SELECT, RELOAD, LOCK TABLES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO '${globals.REPLICA_USER}'@'%';"
+        mysql -uroot -p${DB_PASSWORD} --execute="FLUSH PRIVILEGES;"
