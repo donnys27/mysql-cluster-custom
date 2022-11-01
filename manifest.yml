@@ -1,6 +1,6 @@
 type: install
 jpsVersion: '1.0.0'
-name: whmcs db
+name: MariaDB Custom
 id: mysql-cluster-custom
 
 description:
