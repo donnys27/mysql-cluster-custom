@@ -11,19 +11,115 @@ globals:
   ORCHESTRATOR_PASSWORD: 57uHSy4mt9d8
   REPLICA_USER: repl-53252
   REPLICA_PASSWORD: z62WnKjaGY9WHJA
+  MAX_REPL_LAG: 0
+  PATH: https://raw.githubusercontent.com/jelastic-jps/mysql-cluster/v2.5.0
 
 onInstall:
-  - setupMultiCluster
+  - resetMySQL
   - setupUser
+  - setupMasters
+  - resetProxyNodes
+  - setupOrchestrator
+  - setupProxySQL
+  - addMaster:
+      id: "${nodes.sqldb[0].id}"
+  - addMaster:
+      id: "${nodes.sqldb[1].id}"
+  - forEach(k:nodes.sqldb):
+      addSlave:
+        id: "${@k.id}"
 actions:
-  setupMultiCluster:
+  resetMySQL:
     - cmd [sqldb]:
         - wget ${baseUrl}/scripts/resetmysql.sh -O ~/resetmysql.sh
         - bash ~/resetmysql.sh
     - cmd [sqldb]:
         - mysql -u${globals.DB_USER} -p --execute="UPDATE mysql.user SET password = PASSWORD('${globals.DB_PASSWORD}') WHERE User = '${globals.DB_USER}';" && /etc/init.d/mysql restart
+
   setupUser:
-    - cmd[sqldb]: |-
+    - cmd [sqldb]: |-
         mysql -u${globals.DB_USER} -p${globals.DB_PASSWORD} --execute="CREATE USER IF NOT EXISTS '${globals.REPLICA_USER}'@'%' IDENTIFIED BY '${globals.REPLICA_PASSWORD}';"
         mysql -u${globals.DB_USER} -p${globals.DB_PASSWORD} --execute="GRANT USAGE, SUPER, SELECT, RELOAD, LOCK TABLES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO '${globals.REPLICA_USER}'@'%';"
         mysql -u${globals.DB_USER} -p${globals.DB_PASSWORD} --execute="FLUSH PRIVILEGES;"
+      user: root
+
+  setupMasters:
+    - setupMaster:
+        id: "${nodes.sqldb[0].id}"
+        increment: 1
+    - setupMaster:
+        id: "${nodes.sqldb[1].id}"
+        increment: 2
+    - setupReplication:
+        id: "${nodes.sqldb[0].id}"
+        masterId: "${nodes.sqldb[1].id}"
+    - setupReplication:
+        id: "${nodes.sqldb[1].id}"
+        masterId: "${nodes.sqldb[0].id}"
+
+  setupMaster:
+    - cmd [${this.id}]: |-
+        wget ${globals.PATH}/configs/master.cnf -O /etc/mysql/conf.d/master.cnf &>> /var/log/run.log
+        sed -i "s/report_host.*/report_host = node${this.id}/" /etc/mysql/conf.d/master.cnf; 
+        sed -i "s/server-id.*/server-id = ${this.id}/" /etc/mysql/conf.d/master.cnf
+        sed -i "s/auto-increment-offset.*/auto-increment-offset = ${this.increment}/" /etc/mysql/conf.d/master.cnf
+  
+  setupReplication:
+    - cmd [${this.id}]: |-
+        yum install https://downloads.mysql.com/archives/get/p/29/file/mysql-connector-python-8.0.11-1.el7.x86_64.rpm -y 
+        yum install https://downloads.mysql.com/archives/get/p/30/file/mysql-utilities-1.6.5-1.el7.noarch.rpm -y
+        ln -s /usr/lib/python2.7/site-packages/mysql/utilities /usr/lib64/python2.7/site-packages/mysql/utilities
+    - cmd [${this.id}]: |-
+        /etc/init.d/mysql restart
+        mysqlreplicate --master=${globals.DB_USER}:${globals.DB_PASSWORD}@${this.masterId}:3306 --slave=${globals.DB_USER}:${globals.DB_PASSWORD}@${this.id}:3306 --rpl-user=${globals.REPLICA_USER}:${globals.REPLICA_PASSWORD} --start-from-beginning
+
+  resetProxyNodes:
+    - cmd [proxy]: |-
+        MYSQL_PWD=admin mysql -h 127.0.0.1 -P6032 -uadmin -e "delete from mysql_replication_hostgroups; delete from mysql_users; delete from scheduler; delete from mysql_servers;"
+        MYSQL_PWD=admin mysql -h 127.0.0.1 -P6032 -uadmin -e "SAVE MYSQL VARIABLES TO DISK;"
+        MYSQL_PWD=admin mysql -h 127.0.0.1 -P6032 -uadmin -e "SAVE MYSQL SERVERS TO DISK;"
+        MYSQL_PWD=admin mysql -h 127.0.0.1 -P6032 -uadmin -e "SAVE MYSQL USERS TO DISK;"
+        mysql -h 127.0.0.1 -P3360 -uroot -e "DROP DATABASE IF EXISTS orchestrator;"
+        sudo service proxysql restart;
+    
+  setupOrchestrator:
+    - cmd [proxy]: |-
+        mysql -h 127.0.0.1 -P3360 -uroot -e "DROP DATABASE IF EXISTS orchestrator;"
+        mysql -h 127.0.0.1 -P3360 -uroot -e "CREATE DATABASE IF NOT EXISTS orchestrator;"
+        mysql -h 127.0.0.1 -P3360 -uroot -e "GRANT ALL PRIVILEGES ON orchestrator.* TO 'admin'@'127.0.0.1' IDENTIFIED BY '${globals.ORCHESTRATOR_PASSWORD}';"
+        wget ${globals.PATH}/configs/orchestrator.conf.json -O /etc/orchestrator.conf.json &>> /var/log/run.log
+        sed -i -e 's|orc_client_user|${globals.DB_USER}|g' /etc/orchestrator.conf.json
+        sed -i -e 's|orc_client_password|${globals.DB_PASSWORD}|g' /etc/orchestrator.conf.json
+        sed -i -e 's|orc_server_user|admin|g' /etc/orchestrator.conf.json
+        sed -i -e 's|orc_server_password|${globals.ORCHESTRATOR_PASSWORD}|g' /etc/orchestrator.conf.json
+        sed -i -e 's|HTTP_Auth_User|admin|g' /etc/orchestrator.conf.json
+        sed -i -e 's|HTTP_Auth_Password|${globals.ORCHESTRATOR_PASSWORD}|g' /etc/orchestrator.conf.json
+        systemctl restart orchestrator
+      user: root
+  
+  setupProxySQL:
+    - cmd [proxy]: |-
+        MYSQL_PWD=admin mysql -h 127.0.0.1 -P6032 -uadmin -e "INSERT INTO mysql_replication_hostgroups VALUES (10,11,'read_only','Group setup');"
+        MYSQL_PWD=admin mysql -h 127.0.0.1 -P6032 -uadmin -e "INSERT INTO mysql_users (username, password, active, default_hostgroup, max_connections) 
+          VALUES ('${globals.DB_USER}', '${globals.DB_PASSWORD}', 1, 10, 1000);"
+        MYSQL_PWD=admin mysql -h 127.0.0.1 -P6032 -uadmin -e "INSERT INTO mysql_query_rules (active, match_pattern, destination_hostgroup, apply) VALUES (1, '^SELECT.*', 11, 1);"
+        MYSQL_PWD=admin mysql -h 127.0.0.1 -P6032 -uadmin -e "INSERT INTO mysql_query_rules (active, match_pattern, destination_hostgroup, apply) VALUES (1, '^SELECT.*FOR UPDATE', 10, 1);"
+        MYSQL_PWD=admin mysql -h 127.0.0.1 -P6032 -uadmin -e "UPDATE global_variables SET variable_value='${globals.REPLICA_USER}' WHERE variable_name='mysql-monitor_username';"
+        MYSQL_PWD=admin mysql -h 127.0.0.1 -P6032 -uadmin -e "UPDATE global_variables SET variable_value='${globals.REPLICA_PASSWORD}' WHERE variable_name='mysql-monitor_password';"
+        MYSQL_PWD=admin mysql -h 127.0.0.1 -P6032 -uadmin -e "UPDATE global_variables SET variable_value='${nodes.sqldb.version}' WHERE variable_name='mysql-server_version';"
+        MYSQL_PWD=admin mysql -h 127.0.0.1 -P6032 -uadmin -e "LOAD MYSQL VARIABLES TO RUNTIME; SAVE MYSQL VARIABLES TO DISK;"
+        MYSQL_PWD=admin mysql -h 127.0.0.1 -P6032 -uadmin -e "LOAD MYSQL SERVERS TO RUNTIME; SAVE MYSQL SERVERS TO DISK;"
+        MYSQL_PWD=admin mysql -h 127.0.0.1 -P6032 -uadmin -e "LOAD MYSQL USERS TO RUNTIME; SAVE MYSQL USERS TO DISK;"
+        MYSQL_PWD=admin mysql -h 127.0.0.1 -P6032 -uadmin -e "LOAD MYSQL QUERY RULES TO RUNTIME; SAVE MYSQL QUERY RULES TO DISK;"
+  
+  addMaster:
+    - cmd [proxy]: |-
+        MYSQL_PWD=admin mysql -h 127.0.0.1 -P6032 -uadmin -e "INSERT INTO mysql_servers (hostgroup_id, hostname, port) VALUES (10, 'node${this.id}', 3306);"
+        MYSQL_PWD=admin mysql -h 127.0.0.1 -P6032 -uadmin  -e "LOAD MYSQL SERVERS TO RUNTIME; SAVE MYSQL SERVERS TO DISK;"
+        MYSQL_PWD=${globals.DB_PASSWORD} mysql -u${globals.DB_USER} -hnode${this.id} -e "show slave hosts;"
+        /usr/local/orchestrator/orchestrator -c discover -i node${this.id} cli;
+
+  addSlave:
+    - cmd [proxy]: |-
+        MYSQL_PWD=admin mysql -h 127.0.0.1 -P6032 -uadmin  -e "INSERT INTO mysql_servers (hostgroup_id, hostname, port, max_replication_lag) VALUES (11, 'node${this.id}', 3306, '${globals.MAX_REPL_LAG}');"
+        MYSQL_PWD=admin mysql -h 127.0.0.1 -P6032 -uadmin  -e "LOAD MYSQL SERVERS TO RUNTIME;SAVE MYSQL SERVERS TO DISK;"
