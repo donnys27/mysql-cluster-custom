@@ -18,6 +18,12 @@ onInstall:
   - resetMySQL
   - setupUser
   - setupMasters
+  - replicate:
+      id: "${nodes.sqldb[0].id}"
+      masterId: "${nodes.sqldb[1].id}"
+  - replicate:
+      id: "${nodes.sqldb[1].id}"
+      masterId: "${nodes.sqldb[0].id}"
   - resetProxyNodes
   - setupOrchestrator
   - setupProxySQL
@@ -52,10 +58,12 @@ actions:
         increment: 2
     - setupReplication:
         id: "${nodes.sqldb[0].id}"
-        masterId: "${nodes.sqldb[1].id}"
     - setupReplication:
         id: "${nodes.sqldb[1].id}"
-        masterId: "${nodes.sqldb[0].id}"
+
+  replicate:
+    - cmd [${this.id}]:
+       - mysqlreplicate --master=${globals.DB_USER}:${globals.DB_PASSWORD}@node${this.masterId}:3306 --slave=${globals.DB_USER}:${globals.DB_PASSWORD}@node${this.id}:3306 --rpl-user=${globals.REPLICA_USER}:${globals.REPLICA_PASSWORD} --start-from-beginning
 
   setupMaster:
     - cmd [${this.id}]: |-
@@ -71,7 +79,6 @@ actions:
         ln -s /usr/lib/python2.7/site-packages/mysql/utilities /usr/lib64/python2.7/site-packages/mysql/utilities
     - cmd [${this.id}]: |-
         /etc/init.d/mysql restart
-        mysqlreplicate --master=${globals.DB_USER}:${globals.DB_PASSWORD}@node${this.masterId}:3306 --slave=${globals.DB_USER}:${globals.DB_PASSWORD}@node${this.id}:3306 --rpl-user=${globals.REPLICA_USER}:${globals.REPLICA_PASSWORD} --start-from-beginning
 
   resetProxyNodes:
     - cmd [proxy]: |-
