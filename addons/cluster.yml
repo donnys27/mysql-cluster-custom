@@ -14,6 +14,51 @@ globals:
   MAX_REPL_LAG: 0
   PATH: https://raw.githubusercontent.com/jelastic-jps/mysql-cluster/v2.5.0
 
+onBeforeCloneNodes [sqldb]:
+  - script: |
+      var nodeCount = [];
+      for (var i = 0, n = ${event.params.count}; i < n; i ++) 
+        nodeCount.push(i);
+      return { result : 0, nodeCount: nodeCount}
+  - forEach(response.nodeCount):
+      - cloneSlave
+  - stopEvent:
+    type: success
+    message: New secondaries successfully added
+
+onBeforeScaleIn [sqldb]:
+  forEach(event.response.nodes):
+    removeSlave:
+      id: "${@i.id}"
+
+onAfterClone:
+  - script: delete MANIFEST.id; return {result:0, jps:MANIFEST};
+  - install: ${response.jps}
+    envName: ${event.response.env.envName}    
+    settings: 
+      nodeGroup: ${settings.nodeGroup}      
+      clone: true
+  - install: ${globals.PATH}/scripts/proxy-master-slave.jps?_r=${fn.random}
+    envName: ${event.response.env.envName}
+    nodeGroup: sqldb
+    settings:
+      db_user: "${globals.DB_USER}"
+      db_pass: "${globals.DB_PASSWORD}"
+      path: "${globals.PATH}"
+
+onAfterMigrate:
+  install: ${globals.PATH}/scripts/proxy-master-slave.jps?_r=${fn.random}
+  nodeGroup: sqldb
+  settings:
+    db_user: "${globals.DB_USER}"
+    db_pass: "${globals.DB_PASSWORD}"
+    path: "${globals.PATH}"
+
+onAfterScaleOut [sqldb]:
+  forEach(event.response.nodes):
+  - addSlave:
+      id: "${@i.id}"
+
 onInstall:
   - resetMySQL
   - setupUser
@@ -35,6 +80,33 @@ onInstall:
       addSlave:
         id: "${@k.id}"
 actions:
+  cloneSlave:
+    - if (nodes.proxy):
+        cmd [proxy]:
+          MYSQL_PWD=admin mysql -h 127.0.0.1 -P6032 -uadmin  -e "update mysql_servers set status='OFFLINE_HARD' where hostname='node${globals.node_id_for_new_slave}';"
+          MYSQL_PWD=admin mysql -h 127.0.0.1 -P6032 -uadmin  -e "LOAD MYSQL SERVERS TO RUNTIME;"
+    - cmd [${globals.node_id_for_new_slave}]: sudo /etc/init.d/mysql stop
+    - api: environment.control.AddNode
+      nodeGroup: sqldb
+      nodeid: ${globals.node_id_for_new_slave}
+      nodeType: ${nodes.sqldb.nodeType}
+      flexibleCloudlets: ${nodes.sqldb.flexibleCloudlets}
+      fixedCloudlets: ${nodes.sqldb.fixedCloudlets}
+    - set:
+        new_slave_id: ${response.node.id}
+    - setNodeDisplayName[${nodes.sqldb.master.id}]: ${nodes.sqldb.master.displayName}
+    - setupSlave:
+        id: "${this.new_slave_id}"
+    - reconfigureReplication:
+        id: "${this.new_slave_id}"
+        master_id: "${globals.master_id_for_new_slave}"
+        config: "/etc/mysql/conf.d/slave.cnf"
+    - cmd[${globals.node_id_for_new_slave}]: sudo /etc/init.d/mysql start
+    - if (nodes.proxy):
+        cmd[proxy]: |-
+          MYSQL_PWD=admin mysql -h 127.0.0.1 -P6032 -uadmin  -e "update mysql_servers set status='ONLINE' where hostname='node${globals.node_id_for_new_slave}';"
+          MYSQL_PWD=admin mysql -h 127.0.0.1 -P6032 -uadmin  -e "LOAD MYSQL SERVERS TO RUNTIME;"
+    - setMasterForNewSlave
   resetMySQL:
     - cmd [sqldb]:
         - wget ${baseUrl}/scripts/resetmysql.sh -O ~/resetmysql.sh
@@ -64,6 +136,20 @@ actions:
   replicate:
     - cmd [${this.id}]:
        - mysqlreplicate --master=${globals.DB_USER}:${globals.DB_PASSWORD}@node${this.masterId}:3306 --slave=${globals.DB_USER}:${globals.DB_PASSWORD}@node${this.id}:3306 --rpl-user=${globals.REPLICA_USER}:${globals.REPLICA_PASSWORD} --start-from-beginning
+
+  setMasterForNewSlave:
+    - script: |
+        var onAfterReturn = { setGlobals: {} },
+            glbs = onAfterReturn.setGlobals;
+        if ('${globals.master_id_for_new_slave}' == '${globals.master1_id}') {
+          glbs["master_id_for_new_slave"] = '${globals.master2_id}';
+          glbs["node_id_for_new_slave"] = '${globals.master1_id}';
+        }
+        else {
+          glbs["master_id_for_new_slave"] = '${globals.master1_id}';
+          glbs["node_id_for_new_slave"] = '${globals.master2_id}';
+        }
+        return { result: 0, onAfterReturn: onAfterReturn };
 
   setupMaster:
     - cmd [${this.id}]: |-
