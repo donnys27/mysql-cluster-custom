@@ -127,6 +127,12 @@ actions:
   replicate:
     - cmd [${this.id}]:
        - mysqlreplicate --master=${globals.DB_USER}:${globals.DB_PASSWORD}@node${this.masterId}:3306 --slave=${globals.DB_USER}:${globals.DB_PASSWORD}@node${this.id}:3306 --rpl-user=${globals.REPLICA_USER}:${globals.REPLICA_PASSWORD} --start-from-beginning
+  
+  removeSlave:    
+    - cmd[proxy]: |-
+        MYSQL_PWD=admin mysql -h 127.0.0.1 -P6032 -uadmin  -e "DELETE FROM mysql_servers WHERE hostname = 'node${this.id}';"
+        MYSQL_PWD=admin mysql -h 127.0.0.1 -P6032 -uadmin  -e "LOAD MYSQL SERVERS TO RUNTIME; SAVE MYSQL SERVERS TO DISK;"
+        MYSQL_PWD=${globals.ORCH_PASS} mysql -h 127.0.0.1 -P3360 -uadmin  -e "DELETE FROM orchestrator.database_instance where hostname='node${this.id}-${env.domain}';"
 
   setMasterForNewSlave:
     - script: |
