@@ -34,6 +34,7 @@ onBeforeScaleIn [sqldb]:
 onAfterScaleOut [sqldb]:
   cmd [${event.response.nodes[0].id}]:
     - wget ${baseUrl}/scripts/resetmysql.sh -O ~/resetmysql.sh && bash ~/resetmysql.sh
+  cmd [${event.response.nodes[0].id}]:
     - mysql -u${globals.DB_USER} -p --execute="UPDATE mysql.user SET password = PASSWORD('${globals.DB_PASSWORD}') WHERE User = '${globals.DB_USER}';" && /etc/init.d/mysql restart
   #   - setupUser
   #   - setupMasters
