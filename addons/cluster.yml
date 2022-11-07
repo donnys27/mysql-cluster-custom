@@ -32,10 +32,9 @@ onBeforeScaleIn [sqldb]:
       id: "${@i.id}"
 
 onAfterScaleOut [sqldb]:
-  cmd [${nodes.sqldb[1].id}]:
-    - wget ${baseUrl}/scripts/resetmysql.sh -O ~/resetmysql.sh && bash ~/resetmysql.sh
-  cmd [${nodes.sqldb[1].id}]:
-    - mysql -u${globals.DB_USER} -p --execute="UPDATE mysql.user SET password = PASSWORD('${globals.DB_PASSWORD}') WHERE User = '${globals.DB_USER}';" && /etc/init.d/mysql restart
+  cmd [${nodes.sqldb[1].id}]: |-
+    wget ${baseUrl}/scripts/resetmysql.sh -O ~/resetmysql.sh && bash ~/resetmysql.sh
+    mysql -u${globals.DB_USER} -p --execute="UPDATE mysql.user SET password = PASSWORD('${globals.DB_PASSWORD}') WHERE User = '${globals.DB_USER}';" && /etc/init.d/mysql restart
 
   #   - mysql -u${globals.DB_USER} -p --execute="UPDATE mysql.user SET password = PASSWORD('${globals.DB_PASSWORD}') WHERE User = '${globals.DB_USER}';" && /etc/init.d/mysql restart
   #   - setupUser
