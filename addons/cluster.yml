@@ -50,24 +50,24 @@ onAfterScaleOut [sqldb]:
 
 onInstall:
   - resetMySQL
-  - setupUser
-  - setupMasters
-  - replicate:
-      id: "${nodes.sqldb[0].id}"
-      masterId: "${nodes.sqldb[1].id}"
-  - replicate:
-      id: "${nodes.sqldb[1].id}"
-      masterId: "${nodes.sqldb[0].id}"
-  - resetProxyNodes
-  - setupOrchestrator
-  - setupProxySQL
-  - addMaster:
-      id: "${nodes.sqldb[0].id}"
-  - addMaster:
-      id: "${nodes.sqldb[1].id}"
-  - forEach(k:nodes.sqldb):
-      addSlave:
-        id: "${@k.id}"
+  # - setupUser
+  # - setupMasters
+  # - replicate:
+  #     id: "${nodes.sqldb[0].id}"
+  #     masterId: "${nodes.sqldb[1].id}"
+  # - replicate:
+  #     id: "${nodes.sqldb[1].id}"
+  #     masterId: "${nodes.sqldb[0].id}"
+  # - resetProxyNodes
+  # - setupOrchestrator
+  # - setupProxySQL
+  # - addMaster:
+  #     id: "${nodes.sqldb[0].id}"
+  # - addMaster:
+  #     id: "${nodes.sqldb[1].id}"
+  # - forEach(k:nodes.sqldb):
+  #     addSlave:
+  #       id: "${@k.id}"
 actions:
   cloneSlave:
     - if (nodes.proxy):
