@@ -31,33 +31,22 @@ onBeforeScaleIn [sqldb]:
     removeSlave:
       id: "${@i.id}"
 
-onAfterClone:
-  - script: delete MANIFEST.id; return {result:0, jps:MANIFEST};
-  - install: ${response.jps}
-    envName: ${event.response.env.envName}    
-    settings: 
-      nodeGroup: ${settings.nodeGroup}      
-      clone: true
-  - install: ${globals.PATH}/scripts/proxy-master-slave.jps?_r=${fn.random}
-    envName: ${event.response.env.envName}
-    nodeGroup: sqldb
-    settings:
-      db_user: "${globals.DB_USER}"
-      db_pass: "${globals.DB_PASSWORD}"
-      path: "${globals.PATH}"
-
-onAfterMigrate:
-  install: ${globals.PATH}/scripts/proxy-master-slave.jps?_r=${fn.random}
-  nodeGroup: sqldb
-  settings:
-    db_user: "${globals.DB_USER}"
-    db_pass: "${globals.DB_PASSWORD}"
-    path: "${globals.PATH}"
-
 onAfterScaleOut [sqldb]:
-  forEach(event.response.nodes):
-  - addSlave:
-      id: "${@i.id}"
+  cmd [${event.response.nodes[0].id}]:
+    - resetMySQL
+    - setupUser
+    - setupMasters
+    - replicate:
+        id: "${event.response.nodes[0].id}"
+        masterId: "${nodes.sqldb[0].id}"
+    - addMaster:
+        id: "${event.response.nodes[0].id}"
+    - addSlave:
+        id: "${event.response.nodes[0].id}"
+  cmd [${nodes.sqldb[0].id}]:
+    - replicate:
+        id: "${nodes.sqldb[0].id}"
+        masterId: "${event.response.nodes[0].id}"
 
 onInstall:
   - resetMySQL
